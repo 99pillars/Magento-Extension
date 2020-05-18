@@ -1,4 +1,4 @@
 # Magento Extension
-One of my awesome Magento extension.
+One of my the best Magento extension, ever I built for US client.
 
-An awesome extenstion to display Magento cart items on WP site.
+It is an awesome extenstion to display Magento cart items on WP site automatically.
