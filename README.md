@@ -1,4 +1,4 @@
-# magento_project001
-One of my Magento code snippets project.
+# Magento Extension
+One of my awesome Magento extension.
 
 An awesome extenstion to display Magento cart items on WP site.
