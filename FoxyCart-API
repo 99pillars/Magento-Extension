@@ -1,0 +1,124 @@
+<?php
+// Template Name: UAT
+
+get_header();
+
+// Safe usage for current user.
+$current_user = wp_get_current_user();
+if ( !($current_user instanceof WP_User) || 0 == $current_user->ID ) { echo("<script>location.href = '/login';</script>"); exit; }
+
+$customer_id = get_user_meta($current_user->ID,'sat_foxycart_customer_id',true);
+
+if ( $customer_id ) { 
+
+	$foxy_domain = "xxxx.foxycart.com";
+	$foxyData = array();
+	$foxyData["api_token"] = "xxxxxxx";
+	$foxyData["api_action"] = "transaction_list";
+	$foxyData["customer_id_filter"] = $customer_id; 
+	 
+	$ch = curl_init();
+	curl_setopt($ch, CURLOPT_URL, "https://" . $foxy_domain . "/api");
+	curl_setopt($ch, CURLOPT_POSTFIELDS, $foxyData);
+	curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
+	curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+	// If you get SSL errors, you can uncomment the following, or ask your host to add the appropriate CA bundle
+	// curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+	$response = trim(curl_exec($ch));
+	 
+	// The following if block will print any CURL errors you might have
+	if ($response == false) {
+		print "CURL Error: \n" . curl_error($ch);
+		exit;
+	}
+	curl_close($ch);
+	 
+	$foxyResponse = simplexml_load_string($response, NULL, LIBXML_NOCDATA);
+	//echo "<pre>";
+	//print_r($foxyResponse);
+	//echo "</pre>";
+	?>
+	<style>
+	.table {
+		margin-bottom:0;
+	}
+	/*.table-responsive {
+		border: 1px solid #ddd;
+	}
+	.table > tbody > tr > td, .table > tbody > tr > th {
+		border-top:none;
+	}*/
+	.gallery-tracking-table td:not(:last-child) {
+		border-right: 1px solid #cdcdcd;
+	}
+	.gallery-tracking-table tr:first-child {
+		background-color:#52ACCC;
+		color:#FFF;
+	}
+	.gallery-tracking-table tr:nth-child(odd):not(:first-child) {
+		background-color:#DDD;
+	}
+	.order-items-list, .order-items-list li {
+		margin:0;
+		padding:0;
+	}
+	</style>
+	<div class="container">
+		<h3><?php the_title(); ?></h3>
+		<div>
+			<hr />
+			<?php if($foxyResponse->result != 'ERROR'): ?>
+      <?php echo "Total Records: ".$foxyResponse->statistics->filtered_total[0]; ?>
+      <br /><br />
+			<div class="table-responsive">
+				<table class="gallery-tracking-table table" width="98%" border="0" cellspacing="0" cellpadding="5" align="left">
+					<tr>
+						<th align="left" scope="col" width="100px">Order ID</th>
+						<th align="left" scope="col" width="140px">Date</th>
+						<th align="left" scope="col">Property Address</th>
+						<th align="center" scope="col" width="80px">Receipt</th>
+					</tr>
+					<?php foreach($foxyResponse->transactions->transaction as $result): ?>
+					<tr>
+						<td><?php echo $result->id; ?></td>
+						<td><?php echo date('D d M Y g:i:s A', strtotime($result->transaction_date)); ?></td>
+						<td>
+							<ul class="order-items-list">
+								<?php $featured_property_address = 0;
+									foreach($result->transaction_details->transaction_detail as $item):
+									if($item->product_name == 'Featured Property Address' && $featured_property_address == 0) {
+										if(!empty($item->transaction_detail_options)) { $i = 0;
+											foreach($item->transaction_detail_options->transaction_detail_option as $pa):
+											//echo "<pre>";print_r($pa);echo "</pre>";
+												if($i++ > 3) continue;
+												echo "<li><b style='display: inline-block; width: 50px;'>".ucfirst($pa->product_option_name).':</b> '.$pa->product_option_value."</li>";
+											endforeach;
+										}
+										$featured_property_address = 1;
+									}
+									endforeach; 
+								?>
+							</ul>
+						</td>
+						<?php /*?><td><?php 
+						setlocale(LC_MONETARY, 'en_US.utf8');
+						echo money_format('%+n', floatval($result->order_total)); ?></td><?php */?>
+						<td><a href="<?php echo $result->receipt_url; ?>" target="_blank">Details</a></td>
+					</tr>
+					<?php endforeach; ?>
+				</table>
+			</div>
+			<?php else: echo '<p style="margin-bottom:300px;">There are no records found.</p>'; endif; ?>
+		</div>
+	</div>
+
+<?php
+} else { ?>
+	<h3><?php the_title(); ?></h3>
+  <div class="container">No transactions found. If you feel something went wrong, please contact us.</div>
+<?php
+}
+get_footer();
+
+?>
