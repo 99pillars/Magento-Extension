@@ -1,0 +1,248 @@
+<?php
+/**
+ * VTA Tracker 
+ * Author: Hafiz Adnan Hussain
+ * License: GPL
+ */
+
+/* Runs when plugin is activated */
+register_activation_hook(__FILE__,'vta_tracker'); 
+
+/* Runs on plugin deactivation*/
+register_deactivation_hook( __FILE__, 'vta_tracker_remove' );
+
+if ( is_admin() ){
+	/* Call the html code */
+	add_action('admin_menu', 'register_vta_tracker');
+	function register_vta_tracker() {
+		add_menu_page('VTA Tracker', 'VTA Report', 'administrator', 'virtual-tour-activity-tracker', 'vta_tracker_page');
+	}
+}
+
+function vta_tracker_page($userID = '') {
+	if(get_current_user_id() == 0) return;
+	if(!current_user_can( 'manage_options' )) {
+		$userID = get_current_user_id();
+	}
+?>
+
+<div>
+  <?php
+    	global $wpdb;
+		if(!empty($userID)) {
+			$results = $wpdb->get_results( 'SELECT `vta_gallery_counter`.* FROM `vta_gallery_counter` WHERE `vta_gallery_counter`.`user_id` = ' . $userID );
+		} else {
+			$results = $wpdb->get_results( 'SELECT `vta_gallery_counter`.*, `vta_users`.`user_login` FROM `vta_gallery_counter` INNER JOIN `vta_users` ON `vta_gallery_counter`.`user_id` = `vta_users`.`ID`' );
+		}
+
+		if($results):
+		
+		$online = $wpdb->get_var("SELECT COUNT(*) FROM vta_counter_ips");
+		
+	?>
+  <style>
+	.send-report {
+		text-align:right;
+		margin-right:35px;
+	}
+	.gallery-tracking-table tr a, .send-report a {
+		text-decoration:none;
+	}
+	.gallery-tracking-table tr:first-child {
+		background-color:#52ACCC;
+		color:#FFF;
+	}
+	.gallery-tracking-table tr:nth-child(odd):not(:first-child) {
+		background-color:#DDD;
+	}
+	.deleterecord, .editrecord {
+		background: none repeat scroll 0 0 rgba(0, 0, 0, 0);
+		border: medium none;
+		color: #444444;
+		font-size: 14px;
+	}
+	.deleterecord:hover, .editrecord:hover {
+		color:#000;
+		cursor:pointer;
+	}
+	.vtinput {
+		text-align:center;
+	}
+	.vtinput.viewmode {
+		background:none;
+		border:none;
+		box-shadow:none;
+	}
+</style>
+  <?php if(!$userID && is_admin()): ?>
+  <h3>VTA Report</h3>
+  <hr>
+  <br>
+  <div class="send-report"><a href="#" id="sendReport">Email this report to clients now?</a></div>
+  <br />
+  <?php else: echo "<hr><br />"; endif; ?>
+  <div class="table-responsive">
+    <table class="gallery-tracking-table table" width="98%" border="0" cellspacing="0" cellpadding="5" align="left">
+      <tr>
+        <th align="left" scope="col">Gallery Title</th>
+        <?php if(!$userID) { ?>
+        <th align="left" scope="col">Client</th>
+        <?php } ?>
+        <!--<th style="text-align:center;" scope="col">Online</th>-->
+        <th style="text-align:center;" scope="col">Today</th>
+        <th style="text-align:center;" scope="col">Yesterday</th>
+        <th style="text-align:center;" scope="col">Week</th>
+        <th style="text-align:center;" scope="col">Month</th>
+        <th style="text-align:center;" scope="col">Year</th>
+        <th style="text-align:center;" scope="col">Total</th>
+        <th style="text-align:center;" scope="col">Most views in one day</th>
+        <!--<th align="left" scope="col">Top Record Date</th>-->
+        <th style="text-align:center">Edit</th>
+        <th style="text-align:center">Delete</th>
+      </tr>
+      <?php foreach($results as $result): ?>
+      <tr>
+        <th align="left" scope="row"><a href="<?php echo $result->gallery_url; ?>" target="_blank"><?php echo $result->gallery_name; ?></a></th>
+        <?php if(!$userID) { ?>
+        <td align="left"><a href="user-edit.php?user_id=<?php echo $result->user_id; ?>"><?php echo $result->user_login; ?></a></td>
+        <?php } ?>
+        <?php /*?><td align="center"><?php echo $online; ?></td><?php */?>
+        <td align="center"><input size="3" type="text" id="day_value" name="day_value" value="<?php echo $result->day_value; ?>" class="vtinput viewmode" disabled ></td>
+        <td align="center"><input size="3" type="text" id="yesterday_value" name="yesterday_value" disabled class="vtinput viewmode" value="<?php echo $result->yesterday_value; ?>" ></td>
+        <td align="center"><input size="3" type="text" id="week_value" name="week_value" value="<?php echo $result->week_value; ?>" class="vtinput viewmode" disabled ></td>
+        <td align="center"><input size="3" type="text" id="month_value" name="month_value" value="<?php echo $result->month_value; ?>" class="vtinput viewmode" disabled ></td>
+        <td align="center"><input size="4" type="text" id="year_value" name="year_value" value="<?php echo $result->year_value; ?>" class="vtinput viewmode" disabled ></td>
+        <td align="center"><input size="5" type="text" id="all_value" name="all_value" value="<?php echo $result->all_value; ?>" class="vtinput viewmode" disabled ></td>
+        <td align="center"><strong>
+          <input size="3" type="text" id="record_value" name="record_value" value="<?php echo $result->record_value; ?>" class="vtinput viewmode" disabled >
+          </strong></td>
+        <?php /*?><td align="left"><input size="8" type="text" id="record_date" name="record_date" value="<?php echo $result->record_date; ?>" class="vtinput viewmode" disabled ></td><?php */?>
+        <td align="center"><button id="<?php echo $result->id ?>" class="dashicons dashicons-edit editrecord"></button></td>
+        <td align="center"><button id="<?php echo $result->id ?>" class="dashicons dashicons-trash deleterecord"></button></td>
+      </tr>
+      <?php endforeach; ?>
+    </table>
+  </div>
+  <?php else: echo 'There is no record found.'; endif; ?>
+</div>
+<script>
+jQuery("#sendReport").on('click', function(e){
+	e.preventDefault();
+	
+	if(confirm("Are you sure you want to emails?")) {
+    jQuery.ajax({
+       url: PLUGINS_URI.'/gallery-tracker/gallery_tracking_email.php',
+       dataType: 'json',
+       success: function(data){
+       	alert("Emails successfully sent!");
+       }
+    });
+	}
+	
+});
+</script>
+<?php
+}
+add_shortcode('virtual-tour-activity-report', 'vta_tracker_page');
+?>
+<?php
+
+add_action( 'admin_footer', 'my_action_javascript' );
+
+function my_action_javascript() {
+?>
+<script type="text/javascript" >
+// Delete Record
+jQuery(document).on('click', '.deleterecord', function () {
+	if(confirm("Are you sure you want to delete this tour report?")) {
+		var data = {
+			'action': 'my_action',
+			'row_id': this.id
+		};
+		// since 2.8 ajaxurl is always defined in the admin header and points to admin-ajax.php
+		jQuery.post(ajaxurl, data, function(response) {
+			alert(response);
+			setTimeout(	function() { location.reload();	}, 0001 );
+		});
+	}
+});
+
+// Edit Record
+jQuery(document).on('click', '.editrecord', function() {
+	jQuery(this).addClass('dashicons-update').removeClass('dashicons-edit');
+	jQuery(this).parents('tr').find('.vtinput').removeClass('viewmode').removeAttr('disabled');
+});
+
+// Update Record
+jQuery(document).on('click', '.editrecord.dashicons-update', function() {
+	if(confirm("Are you sure you want to update this tour record?")) {
+		$this = jQuery(this).parents('tr');
+		var data = {
+			'action': 'update_action',
+			'row_id': this.id,
+			'day_value': $this.find('#day_value').val(),
+			'yesterday_value': $this.find('#yesterday_value').val(),
+			'week_value': $this.find('#week_value').val(),
+			'month_value': $this.find('#month_value').val(),
+			'year_value': $this.find('#year_value').val(),
+			'all_value': $this.find('#all_value').val(),
+			'record_value': $this.find('#record_value').val(),
+			'record_date': $this.find('#record_date').val()
+		};
+		// since 2.8 ajaxurl is always defined in the admin header and points to admin-ajax.php
+		jQuery.post(ajaxurl, data, function(response) {
+			//alert(response);
+			setTimeout(	function() { location.reload();	}, 0001 );
+		});
+		
+	} else {
+		jQuery(this).addClass('dashicons-edit').removeClass('dashicons-update');
+		jQuery(this).parents('tr').find('.vtinput').addClass('viewmode').attr('disabled','disabled');
+	}
+});
+
+</script>
+<?php
+}
+
+// Delete Tour Record
+add_action( 'wp_ajax_my_action', 'my_action_callback' );
+function my_action_callback() {
+	global $wpdb; // this is how you get access to the database
+
+	$row_id = intval( $_POST['row_id'] );
+
+	if ($row_id) {
+		$table = 'vta_gallery_counter';
+		$wpdb->delete( $table, array( 'id' => $row_id ) );
+		echo "Virtual Tour with id = $row_id is deleted.";
+		die;
+	} else {
+		echo 'There is some error, please try again';
+		die;
+	}
+
+	die(); // this is required to return a proper result
+}
+
+// Update Tour Record
+add_action( 'wp_ajax_update_action', 'update_action_callback' );
+function update_action_callback() {
+	global $wpdb; // this is how you get access to the database
+
+	$row_id = intval( $_POST['row_id'] );
+
+	if ($row_id) {
+		$table = 'vta_gallery_counter';
+		
+		$wpdb->update( $table, array( 'day_value' => $_POST['day_value'], 'yesterday_value' => $_POST['yesterday_value'], 'week_value' => $_POST['week_value'], 'month_value' => $_POST['month_value'], 'year_value' => $_POST['year_value'], 'all_value' => $_POST['all_value'], 'record_value' => $_POST['record_value'] ), array('id' => $row_id) );
+		
+		echo "Virtual Tour with id = $row_id is updated.";
+		die;
+	} else {
+		echo 'There is some error, please try again';
+		die;
+	}
+
+	die(); // this is required to return a proper result
+}
